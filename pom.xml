@@ -226,7 +226,7 @@
     <url>http://smikesmike.github.com/pushy/</url>
     <scm>
         <connection>scm:git:https://github.com/smikesmike/pushy.git</connection>
-        <developerConnection>scm:git:git@github.com:smikesmike/pushy.git</developerConnection>
+        <developerConnection>scm:git:https://github.com/smikesmike/pushy.git</developerConnection>
         <url>https://github.com/smikesmike/pushy</url>
     </scm>
     <repositories>
