@@ -8,7 +8,7 @@
     <parent>
         <groupId>com.relayrides</groupId>
         <artifactId>pushy-parent</artifactId>
-        <version>0.9.3.dc-patch.1-SNAPSHOT</version>
+        <version>0.9.3.dc-patch.3</version>
     </parent>
 
     <dependencies>
@@ -88,7 +88,7 @@
                                         </goals>
                                     </pluginExecutionFilter>
                                     <action>
-                                        <ignore></ignore>
+                                        <ignore />
                                     </action>
                                 </pluginExecution>
                             </pluginExecutions>
