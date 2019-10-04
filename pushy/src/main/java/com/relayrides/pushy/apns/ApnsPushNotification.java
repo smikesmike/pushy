@@ -22,6 +22,7 @@ package com.relayrides.pushy.apns;
 
 import java.util.Date;
 
+import com.relayrides.pushy.apns.proxy.PushType;
 import com.relayrides.pushy.apns.util.ApnsPayloadBuilder;
 
 /**
@@ -104,4 +105,6 @@ public interface ApnsPushNotification {
      * @since 0.8.1
      */
     String getCollapseId();
+    
+    PushType getPushType();
 }

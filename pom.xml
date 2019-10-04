@@ -5,7 +5,7 @@
     <groupId>com.relayrides</groupId>
     <artifactId>pushy-parent</artifactId>
     <packaging>pom</packaging>
-    <version>0.9.3</version>
+    <version>0.9.3.dc-patch.1-SNAPSHOT</version>
     <name>Pushy parent</name>
     <description>A Java library for sending push notifications</description>
 
@@ -207,10 +207,33 @@
         </developer>
     </developers>
     <inceptionYear>2013</inceptionYear>
-    <url>http://relayrides.github.com/pushy/</url>
+    <url>http://smikesmike.github.com/pushy/</url>
     <scm>
-        <connection>scm:git:https://github.com/relayrides/pushy.git</connection>
-        <developerConnection>scm:git:git@github.com:relayrides/pushy.git</developerConnection>
-        <url>https://github.com/relayrides/pushy</url>
+        <connection>scm:git:https://github.com/smikesmike/pushy.git</connection>
+        <developerConnection>scm:git:git@github.com:smikesmike/pushy.git</developerConnection>
+        <url>https://github.com/smikesmike/pushy</url>
     </scm>
+    <repositories>
+        <repository>
+            <id>dev-central.releases</id>
+            <url>http://nexus.dev-central.eu/content/groups/public</url>
+        </repository>
+    </repositories>
+    <pluginRepositories>
+        <pluginRepository>
+            <id>dev-central.releases</id>
+            <url>http://nexus.dev-central.eu/content/groups/public</url>
+        </pluginRepository>
+    </pluginRepositories>
+
+    <distributionManagement>
+        <snapshotRepository>
+            <id>dc-snapshots</id>
+            <url>http://nexus.dev-central.eu/content/repositories/snapshots</url>
+        </snapshotRepository>
+        <repository>
+            <id>dc-releases</id>
+            <url>http://nexus.dev-central.eu/content/repositories/releases</url>
+        </repository>
+    </distributionManagement>
 </project>

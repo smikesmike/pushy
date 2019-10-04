@@ -34,6 +34,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.relayrides.pushy.apns.proxy.PushType;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelFuture;
@@ -78,6 +79,7 @@ class ApnsClientHandler extends Http2ConnectionHandler {
     private static final AsciiString APNS_EXPIRATION_HEADER = new AsciiString("apns-expiration");
     private static final AsciiString APNS_TOPIC_HEADER = new AsciiString("apns-topic");
     private static final AsciiString APNS_PRIORITY_HEADER = new AsciiString("apns-priority");
+    private static final AsciiString APNS_PUSH_TYPE_HEADER = new AsciiString("apns-push-type");
     private static final AsciiString APNS_COLLAPSE_ID_HEADER = new AsciiString("apns-collapse-id");
     private static final AsciiString APNS_AUTHORIZATION_HEADER = new AsciiString("authorization");
 
@@ -86,12 +88,12 @@ class ApnsClientHandler extends Http2ConnectionHandler {
     private static final int INITIAL_PAYLOAD_BUFFER_CAPACITY = 4096;
 
     private static final Gson gson = new GsonBuilder()
-            .registerTypeAdapter(Date.class, new DateAsTimeSinceEpochTypeAdapter(TimeUnit.MILLISECONDS))
-            .create();
+            .registerTypeAdapter(Date.class, new DateAsTimeSinceEpochTypeAdapter(TimeUnit.MILLISECONDS)).create();
 
     private static final Logger log = LoggerFactory.getLogger(ApnsClientHandler.class);
 
-    public static class ApnsClientHandlerBuilder extends AbstractHttp2ConnectionHandlerBuilder<ApnsClientHandler, ApnsClientHandlerBuilder> {
+    public static class ApnsClientHandlerBuilder
+            extends AbstractHttp2ConnectionHandlerBuilder<ApnsClientHandler, ApnsClientHandlerBuilder> {
 
         private ApnsClient apnsClient;
         private String authority;
@@ -135,10 +137,12 @@ class ApnsClientHandler extends Http2ConnectionHandler {
         }
 
         @Override
-        public ApnsClientHandler build(final Http2ConnectionDecoder decoder, final Http2ConnectionEncoder encoder, final Http2Settings initialSettings) {
+        public ApnsClientHandler build(final Http2ConnectionDecoder decoder, final Http2ConnectionEncoder encoder,
+                final Http2Settings initialSettings) {
             Objects.requireNonNull(this.authority(), "Authority must be set before building an ApnsClientHandler.");
 
-            final ApnsClientHandler handler = new ApnsClientHandler(decoder, encoder, initialSettings, this.apnsClient(), this.authority(), this.useTokenAuthentication());
+            final ApnsClientHandler handler = new ApnsClientHandler(decoder, encoder, initialSettings, this.apnsClient(),
+                    this.authority(), this.useTokenAuthentication());
             this.frameListener(handler.new ApnsClientHandlerFrameAdapter());
             return handler;
         }
@@ -156,7 +160,8 @@ class ApnsClientHandler extends Http2ConnectionHandler {
         }
 
         @Override
-        public int onDataRead(final ChannelHandlerContext context, final int streamId, final ByteBuf data, final int padding, final boolean endOfStream) throws Http2Exception {
+        public int onDataRead(final ChannelHandlerContext context, final int streamId, final ByteBuf data, final int padding,
+                final boolean endOfStream) throws Http2Exception {
             log.trace("Received data from APNs gateway on stream {}: {}", streamId, data.toString(StandardCharsets.UTF_8));
 
             final int bytesProcessed = data.readableBytes() + padding;
@@ -176,15 +181,19 @@ class ApnsClientHandler extends Http2ConnectionHandler {
 
                     if (ApnsClient.EXPIRED_AUTH_TOKEN_REASON.equals(errorResponse.getReason())) {
                         try {
-                            ApnsClientHandler.this.apnsClient.getAuthenticationTokenSupplierForTopic(pushNotification.getTopic()).invalidateToken(authenticationToken);
+                            ApnsClientHandler.this.apnsClient.getAuthenticationTokenSupplierForTopic(pushNotification.getTopic())
+                                    .invalidateToken(authenticationToken);
                         } catch (final NoKeyForTopicException e) {
-                            // This should only happen if somebody de-registered the topic after a notification was sent
-                            log.warn("Authentication token expired, but no key registered for topic {}", pushNotification.getTopic());
+                            // This should only happen if somebody de-registered
+                            // the topic after a notification was sent
+                            log.warn("Authentication token expired, but no key registered for topic {}",
+                                    pushNotification.getTopic());
                         }
                     }
 
-                    ApnsClientHandler.this.apnsClient.handlePushNotificationResponse(
-                            new SimplePushNotificationResponse<>(pushNotification, HttpResponseStatus.OK.equals(status), errorResponse.getReason(), errorResponse.getTimestamp()));
+                    ApnsClientHandler.this.apnsClient
+                            .handlePushNotificationResponse(new SimplePushNotificationResponse<>(pushNotification,
+                                    HttpResponseStatus.OK.equals(status), errorResponse.getReason(), errorResponse.getTimestamp()));
                 }
             } else {
                 log.error("Gateway sent a DATA frame that was not the end of a stream.");
@@ -194,12 +203,15 @@ class ApnsClientHandler extends Http2ConnectionHandler {
         }
 
         @Override
-        public void onHeadersRead(final ChannelHandlerContext context, final int streamId, final Http2Headers headers, final int streamDependency, final short weight, final boolean exclusive, final int padding, final boolean endOfStream) throws Http2Exception {
+        public void onHeadersRead(final ChannelHandlerContext context, final int streamId, final Http2Headers headers,
+                final int streamDependency, final short weight, final boolean exclusive, final int padding,
+                final boolean endOfStream) throws Http2Exception {
             this.onHeadersRead(context, streamId, headers, padding, endOfStream);
         }
 
         @Override
-        public void onHeadersRead(final ChannelHandlerContext context, final int streamId, final Http2Headers headers, final int padding, final boolean endOfStream) throws Http2Exception {
+        public void onHeadersRead(final ChannelHandlerContext context, final int streamId, final Http2Headers headers,
+                final int padding, final boolean endOfStream) throws Http2Exception {
             log.trace("Received headers from APNs gateway on stream {}: {}", streamId, headers);
 
             if (endOfStream) {
@@ -235,12 +247,15 @@ class ApnsClientHandler extends Http2ConnectionHandler {
         }
 
         @Override
-        public void onGoAwayRead(final ChannelHandlerContext context, final int lastStreamId, final long errorCode, final ByteBuf debugData) throws Http2Exception {
+        public void onGoAwayRead(final ChannelHandlerContext context, final int lastStreamId, final long errorCode,
+                final ByteBuf debugData) throws Http2Exception {
             log.info("Received GOAWAY from APNs server: {}", debugData.toString(StandardCharsets.UTF_8));
         }
     }
 
-    protected ApnsClientHandler(final Http2ConnectionDecoder decoder, final Http2ConnectionEncoder encoder, final Http2Settings initialSettings, final ApnsClient apnsClient, final String authority, final boolean useTokenAuthentication) {
+    protected ApnsClientHandler(final Http2ConnectionDecoder decoder, final Http2ConnectionEncoder encoder,
+            final Http2Settings initialSettings, final ApnsClient apnsClient, final String authority,
+            final boolean useTokenAuthentication) {
         super(decoder, encoder, initialSettings);
 
         this.apnsClient = apnsClient;
@@ -249,7 +264,8 @@ class ApnsClientHandler extends Http2ConnectionHandler {
     }
 
     @Override
-    public void write(final ChannelHandlerContext context, final Object message, final ChannelPromise writePromise) throws Http2Exception {
+    public void write(final ChannelHandlerContext context, final Object message, final ChannelPromise writePromise)
+            throws Http2Exception {
         try {
             try {
                 // We'll catch class cast issues gracefully
@@ -257,16 +273,16 @@ class ApnsClientHandler extends Http2ConnectionHandler {
 
                 final int streamId = (int) this.nextStreamId;
 
-                final Http2Headers headers = new DefaultHttp2Headers()
-                        .method(HttpMethod.POST.asciiName())
-                        .authority(this.authority)
+                final Http2Headers headers = new DefaultHttp2Headers().method(HttpMethod.POST.asciiName()).authority(this.authority)
                         .path(APNS_PATH_PREFIX + pushNotification.getToken())
-                        .addInt(APNS_EXPIRATION_HEADER, pushNotification.getExpiration() == null ? 0 : (int) (pushNotification.getExpiration().getTime() / 1000));
+                        .addInt(APNS_EXPIRATION_HEADER, pushNotification.getExpiration() == null ? 0
+                                : (int) (pushNotification.getExpiration().getTime() / 1000));
 
                 final String authenticationToken;
 
                 if (this.useTokenAuthentication) {
-                    authenticationToken = this.apnsClient.getAuthenticationTokenSupplierForTopic(pushNotification.getTopic()).getToken();
+                    authenticationToken = this.apnsClient.getAuthenticationTokenSupplierForTopic(pushNotification.getTopic())
+                            .getToken();
                     headers.add(APNS_AUTHORIZATION_HEADER, "bearer " + authenticationToken);
                 } else {
                     authenticationToken = null;
@@ -278,6 +294,10 @@ class ApnsClientHandler extends Http2ConnectionHandler {
 
                 if (pushNotification.getPriority() != null) {
                     headers.addInt(APNS_PRIORITY_HEADER, pushNotification.getPriority().getCode());
+                }
+
+                if (pushNotification.getPushType() != null && pushNotification.getPushType() != PushType.UNKNOWN) {
+                    headers.add(APNS_PUSH_TYPE_HEADER, pushNotification.getPushType().getHeaderValue());
                 }
 
                 if (pushNotification.getTopic() != null) {
@@ -318,9 +338,13 @@ class ApnsClientHandler extends Http2ConnectionHandler {
                 this.nextStreamId += 2;
 
                 if (this.nextStreamId >= STREAM_ID_RESET_THRESHOLD) {
-                    // This is very unlikely, but in the event that we run out of stream IDs (the maximum allowed is
-                    // 2^31, per https://httpwg.github.io/specs/rfc7540.html#StreamIdentifiers), we need to open a new
-                    // connection. Just closing the context should be enough; automatic reconnection should take things
+                    // This is very unlikely, but in the event that we run out
+                    // of stream IDs (the maximum allowed is
+                    // 2^31, per
+                    // https://httpwg.github.io/specs/rfc7540.html#StreamIdentifiers),
+                    // we need to open a new
+                    // connection. Just closing the context should be enough;
+                    // automatic reconnection should take things
                     // from there.
                     context.close();
                 }
@@ -329,7 +353,8 @@ class ApnsClientHandler extends Http2ConnectionHandler {
             }
 
         } catch (final ClassCastException e) {
-            // This should never happen, but in case some foreign debris winds up in the pipeline, just pass it through.
+            // This should never happen, but in case some foreign debris winds
+            // up in the pipeline, just pass it through.
             log.error("Unexpected object in pipeline: {}", message);
             context.write(message, writePromise);
         }
@@ -345,25 +370,26 @@ class ApnsClientHandler extends Http2ConnectionHandler {
             final ByteBuf pingDataBuffer = context.alloc().ioBuffer(8, 8);
             pingDataBuffer.writeLong(this.nextPingId++);
 
-            this.encoder().writePing(context, false, pingDataBuffer, context.newPromise()).addListener(new GenericFutureListener<ChannelFuture>() {
+            this.encoder().writePing(context, false, pingDataBuffer, context.newPromise())
+                    .addListener(new GenericFutureListener<ChannelFuture>() {
 
-                @Override
-                public void operationComplete(final ChannelFuture future) throws Exception {
-                    if (future.isSuccess()) {
-                        ApnsClientHandler.this.pingTimeoutFuture = future.channel().eventLoop().schedule(new Runnable() {
+                        @Override
+                        public void operationComplete(final ChannelFuture future) throws Exception {
+                            if (future.isSuccess()) {
+                                ApnsClientHandler.this.pingTimeoutFuture = future.channel().eventLoop().schedule(new Runnable() {
 
-                            @Override
-                            public void run() {
-                                log.debug("Closing channel due to ping timeout.");
+                                    @Override
+                                    public void run() {
+                                        log.debug("Closing channel due to ping timeout.");
+                                        future.channel().close();
+                                    }
+                                }, PING_TIMEOUT, TimeUnit.SECONDS);
+                            } else {
+                                log.debug("Failed to write PING frame.", future.cause());
                                 future.channel().close();
                             }
-                        }, PING_TIMEOUT, TimeUnit.SECONDS);
-                    } else {
-                        log.debug("Failed to write PING frame.", future.cause());
-                        future.channel().close();
-                    }
-                }
-            });
+                        }
+                    });
 
             this.flush(context);
         }
