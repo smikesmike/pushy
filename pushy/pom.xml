@@ -8,7 +8,7 @@
     <parent>
         <groupId>com.relayrides</groupId>
         <artifactId>pushy-parent</artifactId>
-        <version>0.9.3.dc-patch.3</version>
+        <version>0.9.3.dc-patch.4-SNAPSHOT</version>
     </parent>
 
     <dependencies>
